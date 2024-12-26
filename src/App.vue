@@ -3,7 +3,9 @@
     <!-- Pokemon Index -->
     <div v-if="!selectedPokemon" class="pokemon-index">
       <h1 class="title">Pokedex</h1>
+      <!-- @scroll="loadMorePokemons" para pcargar pokemon al hacer scroll -->
       <div class="pokemon-list" ref="pokemonList" @scroll="loadMorePokemons">
+
         <div
           v-for="pokemon in pokemons"
           :key="pokemon.id"
@@ -34,6 +36,7 @@
       class="pokemon-info"
       :style="{ backgroundColor: selectedPokemon.typeColor }"
     >
+      <!-- Botón de regreso -->
       <button class="back-button" @click="goBack">⬅</button>
       <div class="pokemon-header">
         <h2>{{ capitalize(selectedPokemon.name) }}</h2>
@@ -50,6 +53,7 @@
         <img :src="getPokemonImage(selectedPokemon.id)" :alt="selectedPokemon.name" />
       </div>
 
+      <!-- Sistema de tabs  para secciones de información -->
       <div class="pokemon-tabs">
         <div class="tabs">
           <button :class="{ active: activeTab === 'about' }" @click="activeTab = 'about'">About</button>
@@ -99,6 +103,8 @@
             <div class="card-item" v-for="(stat, index) in this.baseStatsArray" :key="index">
               <span class="stat-label">{{ stat.label }}:</span>
               <span class="stat-value">{{ stat.value }}</span>
+              <!-- Barra de estadisticas, rojo si es menos de 1/3 del máximo
+              naranja si es entre un 1/3 y un 2/3 y verde para cuando supera 2/3 del máximo -->
               <div class="stat-bar">
                 <div
                   class="stat-fill"
@@ -123,6 +129,10 @@
 
 <script>
 export default {
+  
+  /**
+   * Estado inicial de la información de la aplicación
+   */
   data() {
     return {
       pokemons: [],
@@ -133,15 +143,31 @@ export default {
     };
   },
   methods: {
+    /**
+     * Pone en mayúscula la primera letra
+     * 
+     * @param {string} text - Texto a convertir en mayúscula
+     * 
+     * @returns {string}
+     */
     capitalize(text) {
       return text.charAt(0).toUpperCase() + text.slice(1);
     },
+    
+    /**
+     * Extrae la lista de Pokemon de la API y la agrega a la lista actual.
+     * 
+     * @returns {Promise<void>}
+     */
     async fetchPokemons() {
       try {
+        // Llamada a la API para obtener los Pokémon
         const response = await fetch(
           `https://pokeapi.co/api/v2/pokemon?offset=${(this.page - 1) * 50}&limit=50`
         );
+        // Se convierte la respuesta en un objeto JavaScript
         const data = await response.json();
+        // Se agrega la información de los Pokémon a la lista
         const pokemons = await Promise.all(
           data.results.map(async (pokemon) => {
             const detailsResponse = await fetch(pokemon.url);
@@ -166,9 +192,22 @@ export default {
         this.loading = false;  // Desactivar el estado de carga
       }
     },
+    /**
+     * Genera la URL de la imagen del Pokemon dado su id
+     *
+     * @param {number} id del Pokemon
+     * @returns {string} URL de la imagen.
+     */
     getPokemonImage(id) {
       return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
     },
+    /**
+     * Devuelve el color asociado a cada tipo de Pokemon
+     * 
+     * @param {string} type - Tipo de Pokemon.
+     * 
+     * @returns {string} Color asociado.
+     */
     getTypeColor(type) {
       const typeColors = {
         grass: "green",
@@ -192,6 +231,12 @@ export default {
       };
       return typeColors[type] || "white";
     },
+    /**
+     * Obtiene la información detallada de un Pokemon y la asigna a selectedPokemon.
+     * 
+     * @param {object} pokemon - Pokemon seleccionado.
+     * 
+     */
     async selectPokemon(pokemon) {
       try {
         const response = await fetch(
@@ -232,6 +277,7 @@ export default {
           })),
           typeColor: typeColor,  // Aquí se asigna el color al tipo primario
         };
+        // Array necesario para generar la barra visual de estadísticas, se asume 255 como maximo
         this.baseStatsArray = [
           { label: 'HP', value: this.selectedPokemon.baseStats.hp, max: 255 },
           { label: 'Attack', value: this.selectedPokemon.baseStats.attack, max: 255 },
@@ -245,10 +291,24 @@ export default {
         console.error("Error fetching Pokémon info:", error);
       }
   },
+    /**
+     * Regresa al índice de Pokémon.
+     */
     goBack() {
       this.selectedPokemon = null;
-      this.activeTab = 'about';
+      this.activeTab = 'about'; // Restablecer el tab activo por defecto
     },
+
+    /**
+     * Carga más Pokémon al desplazarse cerca del final de la lista.
+     *
+     * Detecta el evento de desplazamiento en la lista de Pokémon y verifica si
+     * el usuario ha desplazado cerca del final. Si es así y no hay una carga
+     * en progreso, llama a la función fetchPokemons para cargar más Pokémon.
+     *
+     * @param {Event} event - El evento de desplazamiento que se activa en el 
+     * elemento de la lista de Pokémon.
+     */
     loadMorePokemons(event) {
       const scrollHeight = event.target.scrollHeight;
       const scrollTop = event.target.scrollTop;
